@@ -1,25 +1,15 @@
-#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER app
+FROM mcr.microsoft.com/dotnet/core/sdk:8.0 AS build-env
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
-WORKDIR /src
-COPY ["TestArct/TestArct.csproj", "TestArct/"]
-RUN dotnet restore "./TestArct/TestArct.csproj"
-COPY . .
-WORKDIR "/src/TestArct"
-RUN dotnet build "./TestArct.csproj" -c $BUILD_CONFIGURATION -o /app/build
+COPY *.csproj .
 
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./TestArct.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet restore
 
-FROM base AS final
+COPY . ./
+
+RUN dotnet publish --no-restore -c Release -o out
+
+FROM mcr.microsoft.com/dotnet/core/aspnet:8.0
 WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "TestArct.dll"]
+COPY --from=build-env /app/out .
+ENTRYPOINT ["dotnet","TestArct.dll"]
